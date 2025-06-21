@@ -1,17 +1,60 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true,
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    }
+  // Strict type checking
+  "strict": true,
+  
+  // Base directory for module resolution
+  "baseUrl": ".",
+  
+  // Path aliases for imports
+  "paths": {
+    "@/*": ["./*"],
+    "@components/*": ["./components/*"],
+    "@hooks/*": ["./hooks/*"],
+    "@utils/*": ["./utils/*"],
+    "@constants/*": ["./constants/*"],
+    "@assets/*": ["./assets/*"]
   },
+  
+  // Allow default imports from modules with no default export
+  "allowSyntheticDefaultImports": true,
+  
+  // Enable interoperability between CommonJS and ES Modules
+  "esModuleInterop": true,
+  
+  // JSX code generation
+  "jsx": "react-jsx",
+    "jsxImportSource": "react",
+  
+  // Library files to be included in the compilation
+  "lib": ["dom", "esnext"],
+  
+  // Module resolution strategy
+  "moduleResolution": "bundler",
+  
+  // Skip type checking of declaration files
+  "skipLibCheck": true,
+  
+  // Allow importing .json files
+  "resolveJsonModule": true,
+  
+  // Target ECMAScript version
+  "target": "esnext",
+  
+  // Enable all strict type checking options
+  "strictNullChecks": true,
+  "noImplicitAny": true,
+  "strictFunctionTypes": true,
+  "strictBindCallApply": true,
+  "noImplicitThis": true,
+  "alwaysStrict": true
+},
   "include": [
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-  ]
+  ],
+  "exclude": ["node_modules"]
 }
