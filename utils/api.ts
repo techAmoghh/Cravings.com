@@ -1,7 +1,8 @@
 import axios from 'axios';
-import { Recipe, Category, ApiResponse } from '../types/recipe';
+import { Recipe, Category, Area, Ingredient, ApiResponse } from '../types/recipe';
+
 // In utils/api.ts
-export { Category } from '../types/recipe';
+export { Category, Area, Ingredient } from '../types/recipe';
 export { Recipe } from '../types/recipe';
 
 const API_BASE_URL = 'https://www.themealdb.com/api/json/v1/1';
@@ -13,10 +14,30 @@ const api = axios.create({
 
 export const fetchCategories = async (): Promise<Category[]> => {
   try {
-    const response = await api.get<{ categories: Category[] }>('/categories.php');
-    return response.data.categories || [];
+    const response = await api.get<{ meals: Category[] }>('/categories.php');
+    return response.data.meals || [];
   } catch (error) {
     console.error('Error fetching categories:', error);
+    return [];
+  }
+};
+
+export const fetchAreas = async (): Promise<Area[]> => {
+  try {
+    const response = await api.get<{ meals: Area[] }>('/list.php?a=list');
+    return response.data.meals || [];
+  } catch (error) {
+    console.error('Error fetching areas:', error);
+    return [];
+  }
+};
+
+export const fetchIngredients = async (): Promise<Ingredient[]> => {
+  try {
+    const response = await api.get<{ meals: Ingredient[] }>('/list.php?i=list');
+    return response.data.meals || [];
+  } catch (error) {
+    console.error('Error fetching ingredients:', error);
     return [];
   }
 };
@@ -27,6 +48,26 @@ export const fetchRecipesByCategory = async (category: string): Promise<Recipe[]
     return response.data.meals || [];
   } catch (error) {
     console.error(`Error fetching recipes for category ${category}:`, error);
+    return [];
+  }
+};
+
+export const fetchRecipesByArea = async (area: string): Promise<Recipe[]> => {
+  try {
+    const response = await api.get<ApiResponse<Recipe>>(`/filter.php?a=${area}`);
+    return response.data.meals || [];
+  } catch (error) {
+    console.error(`Error fetching recipes for area ${area}:`, error);
+    return [];
+  }
+};
+
+export const fetchRecipesByIngredient = async (ingredient: string): Promise<Recipe[]> => {
+  try {
+    const response = await api.get<ApiResponse<Recipe>>(`/filter.php?i=${ingredient}`);
+    return response.data.meals || [];
+  } catch (error) {
+    console.error(`Error fetching recipes with ingredient ${ingredient}:`, error);
     return [];
   }
 };

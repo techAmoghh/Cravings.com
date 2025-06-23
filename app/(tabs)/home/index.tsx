@@ -2,7 +2,7 @@ import React, { useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl, Dimensions, TouchableOpacity } from 'react-native';
 import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+
 
 import { useRecipes } from '@/hooks/useRecipes';
 import RecipeCard from '@/components/RecipeCard';

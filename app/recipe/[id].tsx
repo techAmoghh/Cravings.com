@@ -58,7 +58,8 @@ export default function RecipeScreen() {
         
         setRecipe(data);
       } catch (err) {
-        setError(err.message || 'Failed to load recipe');
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load recipe';
+        setError(errorMessage);
         console.error(err);
       } finally {
         setIsLoading(false);
