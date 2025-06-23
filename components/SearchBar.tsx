@@ -45,30 +45,44 @@ const SearchBar: React.FC<SearchBarProps> = ({
     setQuery(value);
   }, [value]);
 
+  const handleChangeText = (text: string) => {
+    setQuery(text);
+    // Don't trigger search on every keystroke, let the parent handle debouncing
+    onSearch(text);
+  };
+
+  const handleSubmit = () => {
+    // Only submit if there's actual text (non-whitespace)
+    if (query.trim()) {
+      onSearch(query.trim());
+    } else {
+      // If empty, clear the search
+      handleClear();
+    }
+  };
+
+  const handleClear = () => {
+    setQuery('');
+    onSearch('');
+    onCancel?.();
+  };
+
+  const handleCancelPress = () => {
+    handleClear();
+    inputRef.current?.blur();
+  };
+
   const handleFocus = () => {
     setIsFocused(true);
     onFocus?.();
   };
 
   const handleBlur = () => {
-    setIsFocused(false);
-    onBlur?.();
-  };
-
-  const handleCancel = () => {
-    setQuery('');
-    onSearch('');
-    inputRef.current?.blur();
-    onCancel?.();
-  };
-
-  const handleSubmit = () => {
-    onSearch(query);
-  };
-
-  const handleChangeText = (text: string) => {
-    setQuery(text);
-    onSearch(text);
+    // Only blur if not clicking on the clear/cancel button
+    if (!query) {
+      setIsFocused(false);
+      onBlur?.();
+    }
   };
 
   return (
@@ -88,7 +102,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
         <TextInput
           ref={inputRef}
           style={[styles.input, inputStyle]}
-          placeholder={placeholder}
+          placeholder="Search Recipes…"
           placeholderTextColor="#94A3B8"
           value={query}
           onChangeText={handleChangeText}
@@ -99,16 +113,13 @@ const SearchBar: React.FC<SearchBarProps> = ({
           returnKeyType="search"
           autoCapitalize="none"
           autoCorrect={false}
-          underlineColorAndroid="transparent"
+          maxLength={30}
+          blurOnSubmit={false}
           {...inputProps}
         />
         {query.length > 0 && (
-          <TouchableOpacity
-            onPress={handleCancel}
-            style={styles.clearButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="close-circle" size={18} color="#94A3B8" />
+          <TouchableOpacity onPress={handleCancelPress} style={styles.clearButton}>
+            <Ionicons name="close-circle" size={20} color="#94A3B8" />
           </TouchableOpacity>
         )}
       </View>

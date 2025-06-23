@@ -30,6 +30,7 @@ export const useRecipes = () => {
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   const [filters, setFilters] = useState<RecipeFilters>({
     dietaryRestrictions: [],
     maxCookingTime: null,
@@ -105,64 +106,105 @@ export const useRecipes = () => {
     });
   }, [filters]);
 
-  // Fetch recipes when category/area/ingredient changes or on search term changes
-  const loadRecipes = useCallback(async () => {
-    if (!selectedCategory && !searchTerm.trim() && !filters.area && !filters.ingredient) {
-      setRecipes([]);
-      setFilteredRecipes([]);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      let data: Recipe[] = [];
-      
-      if (searchTerm.trim()) {
-        data = await searchRecipes(searchTerm);
-      } else if (filters.area) {
-        data = await fetchRecipesByArea(filters.area);
-      } else if (filters.ingredient) {
-        data = await fetchRecipesByIngredient(filters.ingredient);
-      } else if (selectedCategory) {
-        data = await fetchRecipesByCategory(selectedCategory);
-      }
-      
-      setRecipes(data);
-      setFilteredRecipes(applyFilters(data));
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load recipes';
-      setError(errorMessage);
-      console.error('Error loading recipes:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [selectedCategory, searchTerm, filters.area, filters.ingredient, applyFilters]);
-
-  // Debounced search
+  // Debounced search function
   const debouncedSearch = useCallback((query: string) => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-    
-    searchTimeoutRef.current = setTimeout(() => {
-      setSearchTerm(query);
-      // Clear other filters when searching
-      setFilters(prev => ({
-        ...prev,
+
+    // If query is empty or only whitespace, reset immediately
+    if (!query.trim()) {
+      setSearchTerm('');
+      setSelectedCategory('Beef'); // Reset to default category
+      setFilters({
+        dietaryRestrictions: [],
+        maxCookingTime: null,
+        difficulty: null,
         area: null,
         ingredient: null,
-      }));
-      setSelectedCategory('');
-    }, 500);
+      });
+      return;
+    }
+
+    // Only search if query has at least 2 characters
+    if (query.trim().length >= 2) {
+      setIsSearching(true);
+      searchTimeoutRef.current = setTimeout(() => {
+        setSearchTerm(query.trim());
+        setIsSearching(false);
+      }, 300); // 300ms debounce delay
+    }
   }, []);
 
-  // Handle search with debounce
+  // Handle search input changes
   const handleSearch = (query: string) => {
-    setSearchQuery(query); // Update the input value immediately
+    setSearchQuery(query);
     debouncedSearch(query);
   };
+
+  // Clear search and reset to default state
+  const clearSearch = useCallback(() => {
+    setSearchQuery('');
+    setSearchTerm('');
+    setIsSearching(false);
+    setSelectedCategory('Beef');
+    setFilters({
+      dietaryRestrictions: [],
+      maxCookingTime: null,
+      difficulty: null,
+      area: null,
+      ingredient: null,
+    });
+  }, []);
+
+  // Load recipes when search term or filters change
+  const loadRecipes = useCallback(async () => {
+    // Don't show loading state for empty searches
+    if (searchTerm === '' && !selectedCategory && !filters.area && !filters.ingredient) {
+      // Reset to default state (beef category)
+      try {
+        setIsLoading(true);
+        const data = await fetchRecipesByCategory('Beef');
+        setRecipes(data);
+        setFilteredRecipes(applyFilters(data));
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load recipes';
+        setError(errorMessage);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // Only search if we have a valid search term or filter
+    if (searchTerm.trim() || selectedCategory || filters.area || filters.ingredient) {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        let data: Recipe[] = [];
+        
+        if (searchTerm.trim()) {
+          data = await searchRecipes(searchTerm);
+        } else if (filters.area) {
+          data = await fetchRecipesByArea(filters.area);
+        } else if (filters.ingredient) {
+          data = await fetchRecipesByIngredient(filters.ingredient);
+        } else if (selectedCategory) {
+          data = await fetchRecipesByCategory(selectedCategory);
+        }
+        
+        setRecipes(data);
+        setFilteredRecipes(applyFilters(data));
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load recipes';
+        setError(errorMessage);
+        console.error('Error loading recipes:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  }, [searchTerm, selectedCategory, filters.area, filters.ingredient, applyFilters]);
 
   // Handle category selection
   const handleCategorySelect = (category: string) => {
@@ -213,13 +255,14 @@ export const useRecipes = () => {
     ingredients,
     selectedCategory,
     recipes: filteredRecipes,
-    isLoading,
+    isLoading: isSearching || isLoading,
     error,
-    searchQuery, // The current input value
-    searchTerm,   // The debounced search term used for actual searching
+    searchQuery,
+    searchTerm,
     filters,
     handleCategorySelect,
     handleSearch,
+    clearSearch,
     updateFilters,
     refreshRecipes: loadRecipes,
   };

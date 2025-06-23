@@ -1,8 +1,8 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl, Dimensions, TouchableOpacity } from 'react-native';
 import Animated, { FadeInDown, Layout } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
-
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useRecipes } from '@/hooks/useRecipes';
 import RecipeCard from '@/components/RecipeCard';
@@ -19,7 +19,8 @@ const CARD_WIDTH = (width - 16 * 2 - CARD_MARGIN * (NUM_COLUMNS - 1)) / NUM_COLU
 export default function HomeScreen() {
   const router = useRouter();
   const flatListRef = useRef<FlatList>(null);
-  
+  const insets = useSafeAreaInsets();
+
   const {
     categories,
     selectedCategory,
@@ -29,8 +30,28 @@ export default function HomeScreen() {
     searchQuery,
     handleCategorySelect,
     handleSearch,
+    clearSearch,
     refreshRecipes,
   } = useRecipes();
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    try {
+      setIsRefreshing(true);
+      await refreshRecipes();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refreshRecipes]);
+
+  const handleSearchChange = (query: string) => {
+    handleSearch(query);
+  };
+
+  const handleSearchClear = () => {
+    clearSearch();
+  };
 
   const handleRecipePress = useCallback((recipe: any) => {
     router.push({
@@ -69,15 +90,17 @@ export default function HomeScreen() {
     <View style={styles.header}>
       <Text style={styles.greeting}>Hello, Chef! 👨‍🍳</Text>
       <Text style={styles.subtitle}>What would you like to cook today?</Text>
-      
+
       <View style={styles.searchContainer}>
         <SearchBar
-          onSearch={handleSearch}
+          onSearch={handleSearchChange}
+          onCancel={handleSearchClear}
           value={searchQuery}
-          placeholder="Search for recipes..."
+          placeholder="Search Recipes…"
+          autoFocus={false}
         />
       </View>
-      
+
       {!searchQuery && (
         <View style={styles.categoriesContainer}>
           <Text style={styles.sectionTitle}>Categories</Text>
@@ -91,7 +114,7 @@ export default function HomeScreen() {
           />
         </View>
       )}
-      
+
       <View style={styles.recipesHeader}>
         <Text style={styles.sectionTitle}>
           {searchQuery ? 'Search Results' : 'Popular Recipes'}
@@ -109,7 +132,7 @@ export default function HomeScreen() {
     if (isLoading) {
       return <LoadingSpinner style={styles.loading} />;
     }
-    
+
     if (error) {
       return (
         <EmptyState
@@ -123,47 +146,56 @@ export default function HomeScreen() {
         />
       );
     }
-    
+
     return (
       <EmptyState
         icon="search"
-        title="No recipes found"
-        message={searchQuery ? 
-          "We couldn't find any recipes matching your search." : 
-          "No recipes available at the moment."
+        title={searchQuery ? "No recipes found" : "No recipes available"}
+        message={
+          searchQuery
+            ? "Try a different search term"
+            : "Pull to refresh or check your connection"
         }
       />
     );
   }, [isLoading, error, searchQuery, refreshRecipes]);
 
+  const containerStyle = {
+    ...styles.container,
+    paddingTop: insets.top,
+    paddingBottom: insets.bottom,
+    paddingLeft: Math.max(insets.left, 16),
+    paddingRight: Math.max(insets.right, 16),
+  };
+
   return (
-    <View style={styles.container}>
-      <Animated.FlatList
+    <View style={containerStyle}>
+      <FlatList
         ref={flatListRef}
         data={recipes}
         renderItem={renderRecipeItem}
         keyExtractor={(item) => item.idMeal}
         numColumns={NUM_COLUMNS}
+        contentContainerStyle={[
+          styles.recipesList,
+          { paddingBottom: insets.bottom + 20 } // Add extra bottom padding
+        ]}
         columnWrapperStyle={styles.columnWrapper}
-        contentContainerStyle={styles.contentContainer}
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={renderEmpty}
         refreshControl={
           <RefreshControl
-            refreshing={isLoading && recipes.length > 0}
-            onRefresh={refreshRecipes}
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
             colors={['#FF6B6B']}
             tintColor="#FF6B6B"
+            progressViewOffset={insets.top} // Adjust refresh control position
           />
         }
-        showsVerticalScrollIndicator={false}
-        keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
-        initialNumToRender={8}
-        maxToRenderPerBatch={8}
-        updateCellsBatchingPeriod={50}
-        windowSize={11}
-        removeClippedSubviews
+        keyboardDismissMode="on-drag"
+        onEndReachedThreshold={0.5}
+        showsVerticalScrollIndicator={false}
       />
     </View>
   );
@@ -174,12 +206,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F7F9FC',
   },
-  contentContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 100,
+  recipesList: {
+    paddingTop: 16, // Reduced top padding since we're using safe area
   },
   header: {
-    paddingTop: 16,
+    paddingTop: 16, // Add some top padding to the header
+    paddingHorizontal: 0, // Remove horizontal padding since container handles it
   },
   greeting: {
     fontSize: 28,
